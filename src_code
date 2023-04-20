@@ -13,34 +13,24 @@ class ColorDetectionBot(Node):
 
         # subscribe to the robot's LiDAR scan topic
         self.lidar_sub = self.create_subscription(
-            LaserScan,
-            '/lidar_scan',
-            self.lidar_callback,
-            10)
+            LaserScan, '/lidar_scan', self.lidar_callback, 10)
 
         # subscribe to the robot's camera image topic
         self.image_sub = self.create_subscription(
-            Image,
-            '/camera_image',
-            self.image_callback,
-            10)
+            Image, '/camera_image', self.image_callback, 10)
 
-        # create a publisher for the robot's movement topic
+        # create a publisher 
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
-        # create a CvBridge object to convert ROS Image messages to OpenCV images
+        # CvBridge object to convert ROS Image messages to OpenCV images
         self.bridge = CvBridge()
 
-        # set the color of the object to look for
         self.object_color = (0, 255, 0)
 
-        # set the detection threshold for the object
         self.detection_threshold = 0.5
 
-        # set the speed of the robot's movement
         self.speed = 0.2
 
-        # set the turning angle for the robot's movement
         self.turn_angle = 0.2
 
         # set the flag to indicate whether an object has been detected
