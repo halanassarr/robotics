@@ -1,0 +1,151 @@
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image, LaserScan
+from cv_bridge import CvBridge
+import cv2
+import numpy as np
+
+
+class ColorDetectionBot(Node):
+
+    def __init__(self):
+        super().__init__('color_detection_bot')
+
+        # subscribe to the robot's LiDAR scan topic
+        self.lidar_sub = self.create_subscription(
+            LaserScan,
+            '/lidar_scan',
+            self.lidar_callback,
+            10)
+
+        # subscribe to the robot's camera image topic
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera_image',
+            self.image_callback,
+            10)
+
+        # create a publisher for the robot's movement topic
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+
+        # create a CvBridge object to convert ROS Image messages to OpenCV images
+        self.bridge = CvBridge()
+
+        # set the color of the object to look for
+        self.object_color = (0, 255, 0)
+
+        # set the detection threshold for the object
+        self.detection_threshold = 0.5
+
+        # set the speed of the robot's movement
+        self.speed = 0.2
+
+        # set the turning angle for the robot's movement
+        self.turn_angle = 0.2
+
+        # set the flag to indicate whether an object has been detected
+        self.object_detected = False
+
+    def lidar_callback(self, msg):
+        # check the distance to the object using the LiDAR scan
+        distance_to_object = min(msg.ranges)
+
+        # check if the object is within 1m of the robot
+        if distance_to_object < 1.0:
+            # stop the robot
+            self.stop_robot()
+
+            # indicate that an object has been detected
+            self.object_detected = True
+
+            # turn the robot away from the object
+            self.turn_away()
+
+        # if the object is not within 1m of the robot, move forward
+        else:
+            self.move_forward()
+
+    def image_callback(self, msg):
+        # convert the ROS Image message to an OpenCV image
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+        # convert the image to grayscale
+        gray_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+
+        # threshold the grayscale image to create a binary image
+        _, binary_image = cv2.threshold(gray_image, 50, 255, cv2.THRESH_BINARY)
+
+        # find contours in the binary image
+        contours, _ = cv2.findContours(
+            binary_image,
+            cv2.RETR_TREE,
+            cv2.CHAIN_APPROX_SIMPLE)
+
+        # check if any of the contours match the color of the object to look for
+        for contour in contours:
+            # get the center point of the contour
+            M = cv2.moments(contour)
+            if M['m00'] > 0:
+                cx = int(M['m10'] / M['m00'])
+                cy = int(M['m01'] / M['m00'])
+
+                # get the color of the pixel at the center point of the contour
+                pixel_color = cv_image[cy, cx]
+
+                # calculate the Euclidean distance between the pixel color and the object color
+                color_distance = np.linalg.norm(np.array(pixel_color) - np.array(self.object_color))
+
+                # check if the color distance is less than the detection threshold
+                if color_distance < self.detection
+                    # stop the robot
+                    self.stop_robot()
+
+                    # indicate that an object has been detected
+                    self.object_detected = True
+
+                    # turn the robot away from the object
+                    self.turn_away()
+
+    def move_forward(self):
+        # create a Twist message to move the robot forward
+        cmd_vel_msg = Twist()
+        cmd_vel_msg.linear.x = self.speed
+        cmd_vel_msg.angular.z = 0
+
+        # publish the Twist message
+        self.cmd_vel_pub.publish(cmd_vel_msg)
+
+    def stop_robot(self):
+        # create a Twist message to stop the robot
+        cmd_vel_msg = Twist()
+        cmd_vel_msg.linear.x = 0
+        cmd_vel_msg.angular.z = 0
+
+        # publish the Twist message
+        self.cmd_vel_pub.publish(cmd_vel_msg)
+
+    def turn_away(self):
+        # create a Twist message to turn the robot away from the object
+        cmd_vel_msg = Twist()
+        cmd_vel_msg.linear.x = 0
+        cmd_vel_msg.angular.z = self.turn_angle
+
+        # publish the Twist message
+        self.cmd_vel_pub.publish(cmd_vel_msg)
+
+    def run(self):
+        # start the node
+        rclpy.spin(self)
+
+        # stop the robot
+        self.stop_robot()
+
+        # destroy the node
+        self.destroy_node()
+
+if __name__ == '__main__':
+    # create a ROS node and start the ColorDetectionBot
+    rclpy.init()
+    color_detection_bot = ColorDetectionBot()
+    color_detection_bot.run()
+    rclpy.shutdown()
